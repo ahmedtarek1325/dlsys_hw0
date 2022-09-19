@@ -19,9 +19,16 @@ def add(x, y):
     Return:
         Sum of x + y
     """
-    ### BEGIN YOUR CODE
-    pass
-    ### END YOUR CODE
+    
+    #=================#
+    # Validity check  #
+    #=================#
+    # if the inputs are numpy arrays then they should be of the same size
+    assert type(x)!= str and type(y)!= str, "Input should not be string"
+    assert not ((type(x)==type(y)==np.ndarray) and (len(x)!=len(y))), \
+        f"arrays should be of the same size rahter got x of size {len(x)} and y of size{len(y)}"
+    
+    return x+y
 
 
 def parse_mnist(image_filename, label_filename):
