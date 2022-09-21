@@ -110,8 +110,25 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
-    ### END YOUR CODE
+    i,end = 0, X.shape[0]
+
+    while i < end: 
+        index = i+batch if (i+batch) <= end else end 
+        # X* Theta
+        outputs = np.matmul(X[i:index],theta) # dim = num_classes*K
+        
+        Z = np.exp(outputs) 
+        Z= Z/np.sum(Z,axis=1).repeat(Z.shape[1]).reshape(Z.shape) # normalizing z w.r.t rows
+
+
+        ey= np.zeros(Z.shape)
+        for e,j in zip(ey,y[i:index]): e[j]=1 # see the exact locations of the ones
+        
+
+        theta -= lr/(index-i)*np.matmul(np.transpose(X[i:index]),Z-ey) 
+        i+=batch
+    return 
+           
 
 
 def nn_epoch(X, y, W1, W2, lr = 0.1, batch=100):
