@@ -116,16 +116,19 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         index = i+batch if (i+batch) <= end else end 
         # X* Theta
         outputs = np.matmul(X[i:index],theta) # dim = num_classes*K
-        
+
         Z = np.exp(outputs) 
         Z= Z/np.sum(Z,axis=1,keepdims=True)
 
         ey= np.zeros(Z.shape)
         for e,j in zip(ey,y[i:index]): e[j]=1 # see the exact locations of the ones
         
-
         theta -= lr/(index-i)*np.matmul(np.transpose(X[i:index]),Z-ey) 
+        
         i+=batch
+
+        
+        
     return 
            
 
