@@ -2,8 +2,15 @@
 #include <pybind11/numpy.h>
 #include <cmath>
 #include <iostream>
-
+#include <fstream>
 namespace py = pybind11;
+
+void mat_multiply(float * result,const float *X, const float *theta,size_t m,size_t n,size_t k);
+void mat_exp(float * mat,size_t size); 
+void mat_normalize(float * mat,size_t row, size_t columns); 
+void mat_transpoe( const float* mat,float* transposed_mat,size_t row,size_t column);
+void mat_subtraction(float *mat1 ,float *mat2, size_t size,float constant);
+
 
 
 void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
@@ -33,8 +40,50 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
      */
 
     /// BEGIN YOUR CODE
+    /* X= m*n 
+       y= m
+       theta= n*k 
 
-    /// END YOUR CODE
+       X(i,j)= X[i*n+j]
+       theta(i,j)= theta[i*k + j] 
+
+    */
+    size_t index, i = 0 ; 
+    while(i<m ){
+        index = (i+batch<=m) ?  i+batch : m ;
+        
+        float* outputs = (float *)calloc((index-i)*k,sizeof(float));
+        mat_multiply(outputs,&X[i*n],theta,index-i,n,k);
+        
+        
+        mat_exp(outputs,(index-i)*k); 
+        mat_normalize(outputs,(index-i),k);
+            
+
+        float* identity = (float *)calloc((index-i)*k,sizeof(float));   
+        for(size_t j = i ; j< index; j++ ){identity[(j-i)*k+y[j]]=1;}
+        
+        mat_subtraction(outputs,identity,(index-i)*k,1.0);
+
+
+        float* X_transpose = (float *)calloc((index-i)*n,sizeof(float));
+        mat_transpoe( &X[i*n],X_transpose,(index-i),n);
+
+
+        float* results = (float *)calloc(n*k,sizeof(float));
+        mat_multiply(results ,X_transpose,outputs,n,(index-i),k);    
+        
+
+
+        mat_subtraction(theta,results,n*k,(lr/(index-i)));
+
+        free(results);
+        free (X_transpose);
+        free(identity);
+        free(outputs);
+        i+=batch;
+    }
+
 }
 
 
@@ -50,17 +99,97 @@ PYBIND11_MODULE(simple_ml_ext, m) {
            py::array_t<float, py::array::c_style> theta,
            float lr,
            int batch) {
-        softmax_regression_epoch_cpp(
-        	static_cast<const float*>(X.request().ptr),
-            static_cast<const unsigned char*>(y.request().ptr),
-            static_cast<float*>(theta.request().ptr),
-            X.request().shape[0],
-            X.request().shape[1],
-            theta.request().shape[1],
-            lr,
-            batch
-           );
+            softmax_regression_epoch_cpp(
+                static_cast<const float*>(X.request().ptr),
+                static_cast<const unsigned char*>(y.request().ptr),
+                static_cast<float*>(theta.request().ptr),
+                X.request().shape[0],
+                X.request().shape[1],
+                theta.request().shape[1],
+                lr,
+                batch
+            );
     },
     py::arg("X"), py::arg("y"), py::arg("theta"),
     py::arg("lr"), py::arg("batch"));
+}
+
+
+void mat_multiply(float * result,const float *X, const float *theta,size_t m,size_t n,size_t k){
+    /**
+     * A NAIVE matrix multiplication function.  This should save in result
+     * the multiplication defined by X and theta (and sizes m,n,k). 
+     *  Result should be allocated as NO CODE will be allocated inside this function
+     * 
+     * Args:
+     *     result (float *): pointer to result data, of size m*k,
+     *          stored in C format
+     *     X (const float *): pointer to X data, of size m*n, stored in row
+     *          major (C) format
+     *     y (const unsigned char *): pointer to y data, of size m
+     *     theta (float *): pointer to theta data, of size n*k, stored in row
+     *          major (C) format
+     *     m (size_t): number of examples
+     *     n (size_t): input dimension
+     *     k (size_t): number of classes
+     *  
+     *
+     * Returns:
+     *     (None)
+     */
+    // for every row j*n
+    for (size_t i =0 ; i< m ; i++ ){
+        for( size_t j= 0 ; j < k ; j++ ){
+            
+            for(size_t l = 0 ; l < n;l++){
+                result[i*k+j]+= X[i*n+l]*theta[j+l*k] ;  
+            }
+        }
+    }
+}
+
+void mat_exp(float * mat,size_t size){
+
+
+    for (size_t i= 0; i < size ; i++){
+        mat[i] = exp(mat[i]);}
+}
+
+void mat_normalize(float * mat,size_t row, size_t columns){
+    // sum every row andd have a row of summation then
+    // have another loop to normalie by it 
+    float* normalizer = (float *)calloc(row,sizeof(float));
+
+    // calculating the sum
+    for(size_t i = 0 ; i < row;i++){
+        for(size_t j = 0;j < columns; j++ ){
+            normalizer[i]+= mat[i*columns+j] ;
+        }
+    }
+    
+    // Normalizing the matrix
+    for(size_t i = 0 ; i < row;i++){
+        for(size_t j = 0;j < columns; j++ ){
+            mat[i*columns+j]/= normalizer[i] ; 
+        }
+    } 
+    
+    free(normalizer); 
+}
+
+void mat_subtraction(float *mat1 ,float *mat2, size_t size,float constant){
+
+    for (size_t i =0 ; i< size ; i++ ){
+        mat1[i]-= mat2[i]*constant;
+    }
+}
+
+void mat_transpoe(const float* mat,float* transposed_mat,size_t row,size_t column){
+    
+    for(size_t i=0; i < row ; i++){
+        for(size_t j= 0 ; j< column ; j++){
+            transposed_mat[j*row+i]= mat[i*column+j];
+        }
+    }
+
 }
